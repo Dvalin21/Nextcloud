@@ -66,7 +66,7 @@ services:
       - nextcloud_net
 
   mariadb:
-    image: mariadb:lts
+    image: mariadb:lts   #Nextcloud looks for =< 11.4.x, but lts installings 11.8.x which works just fine.
     container_name: mariadb
     command:
       - --transaction-isolation=READ-COMMITTED
