@@ -1,0 +1,120 @@
+services:
+  nextcloud:
+    image: lscr.io/linuxserver/nextcloud:latest
+    container_name: nextcloud
+    depends_on:
+      mariadb:
+        condition: service_started
+      redis:
+        condition: service_started
+    entrypoint: |
+      bash -c '
+      # Wait using port check
+      echo "Waiting for Mariadb port..."
+      while ! nc -z mariadb 3306; do
+          sleep 5;
+      done
+      # Additional safety wait
+      sleep 10
+      echo "Starting Nextcloud..."
+      exec /init'
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail https://localhost:443/status.php || exit 1"]
+      interval: 1m # Check more frequently for faster detection of issues
+      retries: 5   # A few retries before marking unhealthy
+      start_period: 5m # Reduce if Nextcloud reliably starts faster after the initial setup
+      timeout: 15s # More generous timeout for response
+    environment:
+      - PUID=1000                 # User ID - match to your host user
+      - PGID=1000                 # Group ID - match to your host group
+      - TZ=America/Chicago          # Timezone (update to your zone)
+      - MARIADB_HOST=mariadb    # Must match database service name
+      - MARIADB_DATABASE=nextcloud     # Database name (must match DB service)
+      - MARIADB_USER=ncuser       # Database user (must match DB service)
+      - MARIADB_PASSWORD=strongpass   # Database password (must match DB service)
+      - MARIADB_ROOT_PASSWORD=strongpass
+      # Config.php additions
+      - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.yourdomain.com # Trusted domains
+      - OVERWRITEHOST=nextcloud.yourdomain.com
+      - NEXTCLOUD_DATA_DIR=/data  # Custom data storage path
+      # --- NEW: Redis Caching Configuration ---
+      - REDIS_HOST=redis # This should be the service name of your Redis container
+      - REDIS_HOST_PORT=6379 # Default Redis port
+      - REDIS_PORT=6379 # Redundant, but sometimes used by older images for compatibility
+      - REDIS_PASSWORD= # Leave empty unless you configure a password for Redis
+#      - REDIS_DBINDEX=0 # Use database 0, or specify another number if needed
+      # These variables tell Nextcloud to use Redis for the specific caching types
+      # The Nextcloud entrypoint script converts these to the config.php entries
+      # --- NEW: Default Phone Region ---
+      - SMTP_HOST=         #SMTP server address.
+      - SMTP_PORT=         #587,465, etc..
+      - SMTP_AUTHTYPE=     #Authentication type (e.g., LOGIN, PLAIN, None)
+      - SMTP_AUTH_REQUIRED= #Whether authentication is required.
+      - SMTP_NAME=         #Username
+      - SMTP_PASSWORD=     #Password
+      - SMTP_SECURE=       #Encryption method (ssl, tls, or null for none).
+      - MAIL_FROM_ADDRESS= #The "From" email address
+      - MAIL_DOMAIN=       #The domain part of the "From" address.
+    volumes:
+      - ./config:/config       # Configuration files
+      - nextcloud_data:/data              # User data directory
+      - ./apps:/apps        # Optional: Custom apps directory
+      - ./ini/nextcloud.ini:/usr/local/etc/php/conf.d/nextcloud.ini
+    ports:
+      - '443:443'
+    restart: unless-stopped
+    networks:
+      - nextcloud_net
+
+  mariadb:
+    image: mariadb:lts
+    container_name: mariadb
+    command:
+      - --transaction-isolation=READ-COMMITTED
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    environment:
+      - PUID=1000                 # Should match Nextcloud's PUID
+      - PGID=1000                 # Should match Nextcloud's PGID
+      - TZ=America/Chicago          # Same timezone as Nextcloud
+      - MARIADB_ROOT_PASSWORD=strongpass
+      - MARIADB_DATABASE=nextcloud     # Must match Nextcloud's DB name
+      - MARIADB_USER=ncuser       # Must match Nextcloud's DB user
+      - MARIADB_PASSWORD=strongpass   # Must match Nextcloud's DB password
+    healthcheck:
+      test:
+        - "CMD"
+        - "healthcheck.sh"
+        - "--su-mysql"
+        - "--connect"
+        - "--innodb_initialized"
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - nextcloud_net
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    command: redis-server --appendonly yes
+    volumes:
+    - redis_data:/data
+    networks:
+      - nextcloud_net
+
+networks:
+  nextcloud_net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  nextcloud_data:
+  redis_data:
+#Make sure to run the following after start
+#sudo docker exec -it nextcloud occ maintenance:repair --include-expensive; occ db:add-missing-indices
