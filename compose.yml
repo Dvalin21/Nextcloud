@@ -35,7 +35,6 @@ services:
       - MARIADB_ROOT_PASSWORD=strongpass
       # Config.php additions
       - NEXTCLOUD_TRUSTED_DOMAINS=nextcloud.yourdomain.com # Trusted domains
-      - OVERWRITEHOST=nextcloud.yourdomain.com
       - NEXTCLOUD_DATA_DIR=/data  # Custom data storage path
       # --- NEW: Redis Caching Configuration ---
       - REDIS_HOST=redis # This should be the service name of your Redis container
@@ -105,6 +104,21 @@ services:
     command: redis-server --appendonly yes
     volumes:
     - redis_data:/data
+    networks:
+      - nextcloud_net
+
+  aio-talk:
+    image: ghcr.io/nextcloud-releases/aio-talk:latest
+    container_name: nextcloud-talk-hpb
+    restart: always
+    environment:
+      - NC_DOMAIN=nextcloud.yourdomains.com
+      - TALK_PORT=3478
+      - TURN_SECRET=<your_turn_secret>
+      - SIGNALING_SECRET=<your_signaling_secret>
+      - INTERNAL_SECRET=<your_internal_secret>
+    ports:
+      - 8081:8081
     networks:
       - nextcloud_net
 
