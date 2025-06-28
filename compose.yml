@@ -41,7 +41,7 @@ services:
       - REDIS_HOST_PORT=6379 # Default Redis port
       - REDIS_PORT=6379 # Redundant, but sometimes used by older images for compatibility
       - REDIS_PASSWORD= # Leave empty unless you configure a password for Redis
-#      - REDIS_DBINDEX=0 # Use database 0, or specify another number if needed
+      - REDIS_DBINDEX=0 # Use database 0, or specify another number if needed
       # These variables tell Nextcloud to use Redis for the specific caching types
       # The Nextcloud entrypoint script converts these to the config.php entries
       # --- NEW: Default Phone Region ---
