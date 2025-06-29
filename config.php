@@ -15,7 +15,7 @@ sudo docker exec -it nextcloud nano config/www/nextcloud/config/config.php
   ),
   'trusted_proxies' =>
   array (
-    0 => '10.0.0.27', // **THE IP ADDRESS OF YOUR ZORAXY OR NGINX SERVER**
+    0 => 'ip address', // **THE IP ADDRESS OF YOUR ZORAXY OR NGINX SERVER**
   ),
   'overwriteprotocol' => 'https',
   'overwritecliurl' => 'https://your.nextcloud.domain.com',
