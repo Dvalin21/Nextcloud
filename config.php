@@ -1,7 +1,6 @@
 Run the following command and paste into the config.php file:
-```
+
 sudo docker exec -it nextcloud nano config/www/nextcloud/config/config.php
-```
 
 
   'memcache.local' => '\OC\Memcache\APCu',
